@@ -5,10 +5,30 @@ const cron = require('node-cron');
 const moment = require('moment-timezone');
 const app = express();
 const mongoDBService = new MongoDBService();
-const { criarPix } = require('./MercadoPagoController');
-app.use(express.json()); 
+const { criarPix, verifyPayment, editPayment } = require('./MercadoPagoController');
+app.use(express.json());
 
 app.post('/pix', criarPix);
+
+app.get('/', (req, res) => {
+    return res.send("Servidor de Valorização e Pagamentos");
+});
+
+app.get('/obterStatusPagamento/:id', async (req, res) => {
+    const { id } = req.params; 
+
+    if (!id) {
+        return res.status(400).send("Envie o ID do pagamento"); 
+    }
+
+    try {
+        const result = await verifyPayment(id);
+        return res.status(200).json(result); 
+    } catch (error) {
+        return res.status(500).json({ error: error.message }); 
+    }
+});
+
 
 const valorizarContratos = async (db) => {
     const purchases = await db.collection('Purchases').find({ status: 2 }).toArray();
@@ -26,21 +46,21 @@ const valorizarContratos = async (db) => {
         const currentIncomeVal = parseFloat(currentIncome);
         const finalIncomeVal = parseFloat(finalIncome);
 
-        const First_Increment_Date = (currentIncome === 0 || !firstIncreasement) 
-            ? moment().tz("America/Sao_Paulo").toDate() 
+        const First_Increment_Date = (currentIncome === 0 || !firstIncreasement)
+            ? moment().tz("America/Sao_Paulo").toDate()
             : firstIncreasement;
 
         const now = new Date();
-        
+
         const totalDays = Math.ceil((endContractDate - First_Increment_Date) / (1000 * 60 * 60 * 24));
         const elapsedDays = Math.ceil((now - First_Increment_Date) / (1000 * 60 * 60 * 24));
 
-        if (elapsedDays >= 90) { 
+        if (elapsedDays >= 90) {
             await db.collection('Clients').updateOne(
                 { _id: clientId },
                 {
                     $set: {
-                        withdrawDate: moment().tz("America/Sao_Paulo").toDate() 
+                        withdrawDate: moment().tz("America/Sao_Paulo").toDate()
                     }
                 }
             );
@@ -58,7 +78,7 @@ const valorizarContratos = async (db) => {
                     $set: {
                         currentIncome: newCurrentIncome.toString(),
                         firstIncreasement: First_Increment_Date, // Apenas define se for a primeira chamada
-                        lastIncreasement: moment().tz("America/Sao_Paulo").toDate() 
+                        lastIncreasement: moment().tz("America/Sao_Paulo").toDate()
                     }
                 }
             );
@@ -71,12 +91,10 @@ const valorizarContratos = async (db) => {
                 { $set: { balance: newBalance } }
             );
 
-            console.log(`Atualizando contrato id #${_id} somando R$${dailyIncome.toFixed(2)}`);
-
             if (newCurrentIncome >= finalIncomeVal) {
                 await db.collection('Purchases').updateOne(
                     { _id: purchase._id },
-                    { $set: { status: 3 } } 
+                    { $set: { status: 3 } }
                 );
                 console.log(`Contrato id #${_id} status atualizado para 3.`);
             }
