@@ -5,6 +5,48 @@ const cron = require('node-cron');
 const moment = require('moment-timezone');
 const app = express();
 const mongoDBService = new MongoDBService();
+const { criarPix } = require('./MercadoPagoController');
+const crypto = require('crypto');
+app.use(express.json()); 
+
+app.post('/pix', criarPix);
+
+app.post('/webhook', async (req, res) => {
+    try {
+        const evento = req.body;
+        const signature = req.headers['x-merchant-signature'];
+
+        console.log('Verificando assinatura...');
+        const expectedSignature = crypto.createHmac('sha256', process.env.MERCADO_PAGO_SECRET)
+                                         .update(JSON.stringify(evento))
+                                         .digest('hex');
+
+        if (signature !== expectedSignature) {
+            console.log('Assinatura inválida');
+            return res.status(403).send('Assinatura inválida');
+        } else {
+            console.log('Assinatura válida');
+        }
+
+        console.log("Recebido evento do Mercado Pago:", evento);
+
+        if (evento.type === 'payment') {
+            const paymentId = evento.data.id;
+
+            const payment = await Payment.findById(paymentId);
+            if (payment) {
+                payment.status = evento.data.status;
+                await payment.save();
+                console.log(`Pagamento ${paymentId} atualizado para o status: ${evento.data.status}`);
+            }
+        }
+
+        res.status(200).send('OK');
+    } catch (error) {
+        console.error("Erro ao processar o webhook:", error);
+        res.status(500).send('Erro ao processar o webhook');
+    }
+});
 
 const valorizarContratos = async (db) => {
     const purchases = await db.collection('Purchases').find({ status: 2 }).toArray();
@@ -16,7 +58,6 @@ const valorizarContratos = async (db) => {
             finalIncome,
             endContractDate,
             firstIncreasement,
-            purchaseDate,
             clientId,
         } = purchase;
 
@@ -70,11 +111,10 @@ const valorizarContratos = async (db) => {
 
             console.log(`Atualizando contrato id #${_id} somando R$${dailyIncome.toFixed(2)}`);
 
-            // Verifica se o status deve ser atualizado
             if (newCurrentIncome >= finalIncomeVal) {
                 await db.collection('Purchases').updateOne(
                     { _id: purchase._id },
-                    { $set: { status: 3 } }  // Atualiza o status para 3
+                    { $set: { status: 3 } } 
                 );
                 console.log(`Contrato id #${_id} status atualizado para 3.`);
             }
@@ -87,12 +127,12 @@ const run = async () => {
         await mongoDBService.connect();
         const db = mongoDBService.getDatabase('OscarPlataforma');
 
-        cron.schedule('42 01 * * *', async () => {
+        cron.schedule('30 00 * * *', async () => {
             console.log('Executando valorização de contratos...');
             await valorizarContratos(db);
         });
 
-        app.listen(3001, () => {
+        app.listen(3030, () => {
             console.log('Servidor rodando na porta 3001');
         });
     } catch (err) {
