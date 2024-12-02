@@ -4,6 +4,7 @@ const { Purchase, Client } = require('./Models');
 const cron = require('node-cron');
 const moment = require('moment-timezone');
 const app = express();
+const axios = require('axios');
 const mongoDBService = new MongoDBService();
 const { criarPix, verifyPayment, editPayment } = require('./MercadoPagoController');
 app.use(express.json());
@@ -15,19 +16,56 @@ app.get('/', (req, res) => {
 });
 
 app.get('/obterStatusPagamento/:id', async (req, res) => {
-    const { id } = req.params; 
+    const { id } = req.params;
 
     if (!id) {
-        return res.status(400).send("Envie o ID do pagamento"); 
+        return res.status(400).send("Envie o ID do pagamento");
     }
 
     try {
         const result = await verifyPayment(id);
-        return res.status(200).json(result); 
+        return res.status(200).json(result);
     } catch (error) {
-        return res.status(500).json({ error: error.message }); 
+        return res.status(500).json({ error: error.message });
     }
 });
+
+const verificarPagamentos = async (db) => {
+    const purchases = await db.collection('Purchases').find({ status: 1 }).toArray();
+
+    for (const purchase of purchases) {
+        if (purchase.status === 1 && purchase.ticketId !== null) {
+            try {
+                const paymentStatus = await verifyPayment(purchase.ticketId);
+                const status = paymentStatus.status;
+
+                let newStatus;
+                if (status === "cancelled" || status === "rejected") {
+                    newStatus = 4; // Status 4
+                } else if (status === "authorized" || status === "approved") {
+                    newStatus = 2; // Status 2
+                }
+
+                console.log(`Status do PIX do contrato ${purchase._id} é ${status}`);
+
+                if (newStatus) {
+                    await db.collection('Purchases').updateOne(
+                        { _id: purchase._id },
+                        { $set: { status: newStatus } }
+                    );
+
+                    await axios.post(`https://servidoroscar.modelodesoftwae.com/api/purchase/${purchase.purchaseId}/novoStatus`,
+                        { status: newStatus }
+                    );
+
+                    console.log(`Status do contrato id #${purchase._id} atualizado para ${newStatus}.`);
+                }
+            } catch (error) {
+                console.error(`Erro ao verificar pagamento para o contrato id #${purchase._id}:`, error);
+            }
+        }
+    }
+}
 
 
 const valorizarContratos = async (db) => {
@@ -107,9 +145,12 @@ const run = async () => {
         await mongoDBService.connect();
         const db = mongoDBService.getDatabase('OscarPlataforma');
 
-        cron.schedule('30 00 * * *', async () => {
+        cron.schedule('03 21 * * *', async () => {
+            console.log('Executando verificação de pagamentos...');
+            await verificarPagamentos(db); 
+
             console.log('Executando valorização de contratos...');
-            await valorizarContratos(db);
+            await valorizarContratos(db); // Chama a função valorizarContratos
         });
 
         app.listen(3030, () => {
@@ -121,3 +162,4 @@ const run = async () => {
 };
 
 run();
+
