@@ -110,6 +110,8 @@ const valorizarContratos = async (db) => {
             const dailyIncome = (finalIncomeVal - currentIncomeVal) / totalDays;
             const newCurrentIncome = currentIncomeVal + dailyIncome;
 
+            console.log(`Atualizando contrato ${_id}`);
+
             await db.collection('Purchases').updateOne(
                 { _id: purchase._id },
                 {
@@ -145,12 +147,12 @@ const run = async () => {
         await mongoDBService.connect();
         const db = mongoDBService.getDatabase('OscarPlataforma');
 
-        cron.schedule('03 21 * * *', async () => {
+        cron.schedule('01 19 * * *', async () => {
             console.log('Executando verificação de pagamentos...');
-            await verificarPagamentos(db); 
+            await verificarPagamentos(db);
 
             console.log('Executando valorização de contratos...');
-            await valorizarContratos(db); // Chama a função valorizarContratos
+            await valorizarContratos(db);
         });
 
         app.listen(3030, () => {
