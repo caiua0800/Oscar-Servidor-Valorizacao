@@ -65,13 +65,31 @@ const verificarPagamentos = async (db) => {
                     console.log(res.data)
                     console.log(res.data.token)
 
-                    await axios.post(`https://servidoroscar.modelodesoftwae.com/api/purchase/${purchase.purchaseId}/novoStatus`,
+                    await axios.post(`http://15.228.159.61:5000/api/purchase/${purchase.purchaseId}/novoStatus`,
                         { status: newStatus }
                     , {
                         headers: {
                             'Authorization': `Bearer ${resToken.data.token}` 
                         }
                     });
+
+                    // const resToken = await axios.post(`http://15.228.159.61:5000/api/auth/token`,
+                        //     {
+                        //         "id": "123456789",
+                        //         "password": "Caiua@2017"
+                        //     }
+                        // );
+    
+                        // console.log(res.data)
+                        // console.log(res.data.token)
+    
+                        // await axios.post(`https://servidoroscar.modelodesoftwae.com/api/purchase/${purchase.purchaseId}/novoStatus`,
+                        //     { status: newStatus }
+                        // , {
+                        //     headers: {
+                        //         'Authorization': `Bearer ${resToken.data.token}` 
+                        //     }
+                        // });
 
                     console.log(`Status do contrato id #${purchase._id} atualizado para ${newStatus}.`);
                 }
