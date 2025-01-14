@@ -33,6 +33,15 @@ app.get('/obterStatusPagamento/:id', async (req, res) => {
 const verificarPagamentos = async (db) => {
     const purchases = await db.collection('Purchases').find({ status: 1 }).toArray();
 
+    const resToken = await axios.post(`${process.env.BASE_ROUTE}auth/token`,
+        {
+            "id": process.env.USER_LOGIN,
+            "password": process.env.SENHA_LOGIN
+        }
+    );
+
+    console.log(resToken)
+
     for (const purchase of purchases) {
         if (purchase.status === 1 && purchase.ticketId !== null) {
             try {
@@ -55,41 +64,13 @@ const verificarPagamentos = async (db) => {
                         { $set: { status: newStatus } }
                     );
 
-                    const resToken = await axios.post(`http://15.228.159.61:5000/api/auth/token`,
-                        {
-                            "id": "123456789",
-                            "password": "Caiua@2017"
-                        }
-                    );
-
-                    console.log(res.data)
-                    console.log(res.data.token)
-
-                    await axios.post(`http://15.228.159.61:5000/api/purchase/${purchase.purchaseId}/novoStatus`,
+                    await axios.post(`${process.env.BASE_ROUTE}purchase/${purchase.purchaseId}/novoStatus`,
                         { status: newStatus }
-                    , {
-                        headers: {
-                            'Authorization': `Bearer ${resToken.data.token}` 
-                        }
-                    });
-
-                    // const resToken = await axios.post(`http://15.228.159.61:5000/api/auth/token`,
-                        //     {
-                        //         "id": "123456789",
-                        //         "password": "Caiua@2017"
-                        //     }
-                        // );
-    
-                        // console.log(res.data)
-                        // console.log(res.data.token)
-    
-                        // await axios.post(`https://servidoroscar.modelodesoftwae.com/api/purchase/${purchase.purchaseId}/novoStatus`,
-                        //     { status: newStatus }
-                        // , {
-                        //     headers: {
-                        //         'Authorization': `Bearer ${resToken.data.token}` 
-                        //     }
-                        // });
+                        , {
+                            headers: {
+                                'Authorization': `Bearer ${resToken.data.token}`
+                            }
+                        });
 
                     console.log(`Status do contrato id #${purchase._id} atualizado para ${newStatus}.`);
                 }
@@ -180,7 +161,7 @@ const run = async () => {
         await mongoDBService.connect();
         const db = mongoDBService.getDatabase('OscarPlataforma');
 
-        cron.schedule('01 19 * * *', async () => {
+        cron.schedule('26 19 * * *', async () => {
             console.log('Executando verificação de pagamentos...');
             await verificarPagamentos(db);
 
