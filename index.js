@@ -55,6 +55,8 @@ const verificarPagamentos = async (db) => {
                     newStatus = 2; // Status 2
                 }
 
+                console.log(newStatus)
+
                 console.log(`Status do PIX do contrato ${purchase._id} é ${status}`);
 
                 if (newStatus) {
@@ -161,7 +163,7 @@ const run = async () => {
         await mongoDBService.connect();
         const db = mongoDBService.getDatabase('OscarPlataforma');
 
-        cron.schedule('26 19 * * *', async () => {
+        cron.schedule('10 00 * * *', async () => {
             console.log('Executando verificação de pagamentos...');
             await verificarPagamentos(db);
 
