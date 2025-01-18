@@ -97,10 +97,6 @@ const verifyPayment = async (id) => {
             }
         });
 
-        // Imprimindo o resultado no console
-        console.log("Payment Verification Result:");
-        console.log(response.data);
-
         return response.data; // Retorne os dados, se necessário
     } catch (error) {
         console.error("ERROR VERIFYING PAYMENT:");

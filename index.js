@@ -40,7 +40,21 @@ const verificarPagamentos = async (db) => {
         }
     );
 
-    console.log(resToken)
+    const systemConfig_automatic_payment_verification = await axios.get(`${process.env.BASE_ROUTE}systemconfig/automatic_payment_verification`, {
+        headers: {
+            'Authorization': `Bearer ${resToken.data.token}`
+        }
+    });
+
+    if(systemConfig_automatic_payment_verification.data 
+        && systemConfig_automatic_payment_verification.data.value
+    && systemConfig_automatic_payment_verification.data.value === "false"){
+        console.log(systemConfig_automatic_payment_verification.data)
+        console.log("Cancelado Verificação automática de pagamentos");
+        return;
+    }else{
+        console.log("Verificação automática de pagamentos ativada, iniciando verificação...");
+    }
 
     for (const purchase of purchases) {
         if (purchase.status === 1 && purchase.ticketId !== null) {
@@ -54,8 +68,6 @@ const verificarPagamentos = async (db) => {
                 } else if (status === "authorized" || status === "approved") {
                     newStatus = 2; // Status 2
                 }
-
-                console.log(newStatus)
 
                 console.log(`Status do PIX do contrato ${purchase._id} é ${status}`);
 
@@ -95,10 +107,12 @@ const valorizarContratos = async (db) => {
             endContractDate,
             firstIncreasement,
             clientId,
+            daysToFirstWithdraw,
         } = purchase;
 
         const currentIncomeVal = parseFloat(currentIncome);
         const finalIncomeVal = parseFloat(finalIncome);
+        const daysToFirstWithdrawVal = daysToFirstWithdraw ? parseFloat(daysToFirstWithdraw) : 90;
 
         const First_Increment_Date = (currentIncome === 0 || !firstIncreasement)
             ? moment().tz("America/Sao_Paulo").toDate()
@@ -109,7 +123,7 @@ const valorizarContratos = async (db) => {
         const totalDays = Math.ceil((endContractDate - First_Increment_Date) / (1000 * 60 * 60 * 24));
         const elapsedDays = Math.ceil((now - First_Increment_Date) / (1000 * 60 * 60 * 24));
 
-        if (elapsedDays >= 90) {
+        if (elapsedDays >= daysToFirstWithdrawVal) {
             await db.collection('Clients').updateOne(
                 { _id: clientId },
                 {
@@ -163,7 +177,7 @@ const run = async () => {
         await mongoDBService.connect();
         const db = mongoDBService.getDatabase('OscarPlataforma');
 
-        cron.schedule('17 03 * * *', async () => {
+        cron.schedule('27 16 * * *', async () => {
             console.log('Executando verificação de pagamentos...');
             await verificarPagamentos(db);
 
