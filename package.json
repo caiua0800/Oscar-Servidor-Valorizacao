@@ -10,6 +10,7 @@
     "mongoose": "^8.8.1",
     "mp-webhook-portable": "^1.2.8",
     "node-cron": "^3.0.3",
+    "node-fetch": "^3.3.2",
     "uuid": "^11.0.3"
   },
   "name": "servidor-valorizacao",
