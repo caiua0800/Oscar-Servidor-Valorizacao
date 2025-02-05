@@ -3,10 +3,7 @@ require('dotenv').config();
 
 class MongoDBService {
     constructor() {
-        this.client = new MongoClient(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        this.client = new MongoClient(process.env.MONGODB_URI);
     }
 
     async connect() {

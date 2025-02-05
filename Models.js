@@ -2,10 +2,7 @@ const { Schema } = require('mongoose');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-}).then(() => {
+mongoose.connect(process.env.MONGODB_URI).then(() => {
     console.log('Conexão com o MongoDB Atlas estabelecida');
 }).catch(err => {
     console.error('Erro ao conectar ao MongoDB Atlas', err);
